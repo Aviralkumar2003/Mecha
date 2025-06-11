@@ -9,7 +9,7 @@ import numpy as np # type: ignore
 app = Flask(__name__)
 CORS(app) 
 
-df = pd.read_csv("data.csv")
+df = pd.read_csv("backend/data.csv")
 df['Date'] = pd.to_datetime(df['Date'], format='%Y-%m-%d')
 df = df.set_index('Date', drop=True)
 df_inventory=df.copy()

@@ -65,62 +65,65 @@ export default function PredictionChart() {
     fetchForecast();
   }, [store, product, startDate, endDate]);
 
-  const filterDates = (allDates, interval) => {
+  // Instead of filtering out data points, this function now determines which date labels to show
+  const getVisibleDateIndices = (allDates, interval) => {
     if (!allDates || allDates.length === 0) return [];
 
+    const indices = [];
+    
     switch (interval) {
       case "weekly":
-        return allDates.filter((_, index) => index % 7 === 0);
+        // Show labels for every 7th date
+        for (let i = 0; i < allDates.length; i += 7) {
+          indices.push(i);
+        }
+        break;
       case "monthly":
-        return allDates.filter(date => new Date(date).getDate() === 1);
-      case "quarterly":
-        return allDates.filter(date => {
-          const month = new Date(date).getMonth();
-          return month === 0 || month === 3 || month === 6 || month === 9;
+        // Show labels for dates that are the 1st of the month
+        allDates.forEach((date, index) => {
+          if (new Date(date).getDate() === 1) {
+            indices.push(index);
+          }
         });
+        break;
+      case "quarterly":
+        // Show labels for dates that are the 1st of quarters (Jan, Apr, Jul, Oct)
+        allDates.forEach((date, index) => {
+          const month = new Date(date).getMonth();
+          if (month === 0 || month === 3 || month === 6 || month === 9) {
+            indices.push(index);
+          }
+        });
+        break;
       default:
-        return allDates;
+        // Show all labels by default
+        return allDates.map((_, index) => index);
     }
-  };
 
-  // const getYAxisLimits = () => {
-  //   if (!forecastData || !forecastData.predicted_sales) return {};
-  
-  //   const allValues = [
-  //     ...(showPredicted ? forecastData.predicted_sales.map(item => item.predicted) : []),
-  //     ...(showMin ? forecastData.predicted_sales.map(item => item.lower_bound) : []),
-  //     ...(showMax ? forecastData.predicted_sales.map(item => item.upper_bound) : []),
-  //     ...(forecastData.actual_sales?.map(item => item.actual) || [])
-  //   ];
-  
-  //   const minLimit = Math.min(...allValues) * 0.9;
-  //   const maxLimit = Math.max(...allValues) * 1.1;
-  
-  //   return { min: Math.max(minLimit, 0), max: maxLimit };
-  // };
-  
+    return indices;
+  };
 
   const prepareChartData = () => {
     if (!forecastData || !forecastData.predicted_sales || product === "None") return null;
 
     const allDates = forecastData.predicted_sales.map(item => item.date);
-    const filteredDates = filterDates(allDates, selectedInterval);
+    // Get indices of dates that should have visible labels
+    const visibleDateIndices = getVisibleDateIndices(allDates, selectedInterval);
 
-    const getFilteredData = key =>
-      forecastData.predicted_sales
-        .filter(item => filteredDates.includes(item.date))
-        .map(item => item[key]);
+    // Create formatted labels - show dates at specified indices, empty strings at others
+    const formattedLabels = allDates.map((date, index) => 
+      visibleDateIndices.includes(index) ? date : ""
+    );
 
-    const predictedValues = getFilteredData("predicted");
-    const minRange = getFilteredData("lower_bound");
-    const maxRange = getFilteredData("upper_bound");
+    // Use all data points, not filtered ones
+    const predictedValues = forecastData.predicted_sales.map(item => item.predicted);
+    const minRange = forecastData.predicted_sales.map(item => item.lower_bound);
+    const maxRange = forecastData.predicted_sales.map(item => item.upper_bound);
 
-    const actualSales = forecastData.predicted_sales
-      .filter(item => filteredDates.includes(item.date))
-      .map(item => {
-        const actualEntry = forecastData.actual_sales?.find(a => a.date === item.date);
-        return actualEntry ? actualEntry.actual : null;
-      });
+    const actualSales = forecastData.predicted_sales.map(item => {
+      const actualEntry = forecastData.actual_sales?.find(a => a.date === item.date);
+      return actualEntry ? actualEntry.actual : null;
+    });
 
     const datasets = [];
 
@@ -170,8 +173,9 @@ export default function PredictionChart() {
         fill: true,
       });
     }
+    
     return {
-      labels: filteredDates,
+      labels: formattedLabels,
       datasets: datasets,
     };
   };
@@ -189,8 +193,13 @@ export default function PredictionChart() {
         mode: 'index',
         intersect: false,
         callbacks: {
+          title: function(tooltipItems) {
+            // Get the actual date from allDates using the index
+            const dataIndex = tooltipItems[0].dataIndex;
+            return forecastData?.predicted_sales[dataIndex]?.date || 'Unknown Date';
+          },
           label: function (tooltipItem) {
-            return `${tooltipItem.dataset.label}: ${tooltipItem.raw.toFixed(2)}`;
+            return `${tooltipItem.dataset.label}: ${tooltipItem.raw?.toFixed(2) || 'N/A'}`;
           }
         }
       },
@@ -199,11 +208,16 @@ export default function PredictionChart() {
       x: {
         title: { display: true, text: "Date" },
         grid: { display: false },
+        ticks: {
+          autoSkip: false,
+          align: 'start',
+          maxRotation: 45,
+          minRotation: 45
+        }
       },
       y: {
         title: { display: true, text: "Sales" },
         grid: { color: "rgba(200, 200, 200, 0.3)" },
-        // ...getYAxisLimits()
       },
     },
     interaction: {
@@ -235,83 +249,73 @@ export default function PredictionChart() {
 
   const futureUnits = calculateFutureUnits();
 
+  return ( <div className="m-4 p-6 rounded-xl bg-white shadow-md border border-gray-200 flex flex-col gap-8"> <div className="flex-1 space-y-4"> <div className="flex items-center space-x-3"> <label htmlFor="interval" className="text-lg font-semibold">Interval:</label>
+  <select
+    id="interval"
+    value={selectedInterval}
+    onChange={e => setSelectedInterval(e.target.value)}
+    className="p-2 border rounded-md outline-none focus:ring-2 focus:ring-[#31837A]"
+  > <option value="weekly">Weekly</option> <option value="monthly">Monthly</option> <option value="quarterly">Quarterly</option> </select>
 
-  return (
-    <div className="m-4 p-6 rounded-xl bg-white shadow-md border border-gray-200 flex flex-col gap-8">
-      <div className="flex-1 space-y-4">
-        <div className="flex items-center space-x-3">
-          <label htmlFor="interval" className="text-lg font-semibold">Interval:</label>
-          <select
-            id="interval"
-            value={selectedInterval}
-            onChange={e => setSelectedInterval(e.target.value)}
-            className="p-2 border rounded-md outline-none focus:ring-2 focus:ring-[#31837A]"
-          >
-            <option value="weekly">Weekly</option>
-            <option value="monthly">Monthly</option>
-            <option value="quarterly">Quarterly</option>
-          </select>
-
-          <div className="flex items-center space-x-3">
-            <input
-              type="checkbox"
-              id="predicted"
-              checked={showPredicted}
-              onChange={(e) => setShowPredicted(e.target.checked)}
-            />
-            <label htmlFor="predicted" className="text-sm">
-              Predicted Sales
-            </label>
-            <input
-              type="checkbox"
-              id="min"
-              checked={showMin}
-              onChange={(e) => setShowMin(e.target.checked)}
-            />
-            <label htmlFor="min" className="text-sm">
-              Minimum Required Units
-            </label>
-            <input
-              type="checkbox"
-              id="max"
-              checked={showMax}
-              onChange={(e) => setShowMax(e.target.checked)}
-            />
-            <label htmlFor="max" className="text-sm">
-              Maximum Required Units
-            </label>
-          </div>
-        </div>
-
-        {product !== "None" && forecastData && prepareChartData() && (
-  <div className="bg-white p-6 rounded-xl shadow border border-gray-200 space-y-6">
-    <h2 className="text-2xl font-bold text-[#09243A] text-center">Forecast Summary</h2>
-
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm text-gray-800">
-      <div className="space-y-2">
-        <p><span className="font-semibold">Product:</span> {product}</p>
-        <p><span className="font-semibold">Store Location:</span> {store}</p>
-        <p><span className="font-semibold">Start Date:</span> {startDate}</p>
-        <p><span className="font-semibold">End Date:</span> {endDate}</p>
-      </div>
-      <div className="space-y-2">
-        <p><span className="font-semibold">Forecast Interval:</span> {selectedInterval}</p>
-        <p><span className="font-semibold">Min Required Units:</span> {futureUnits ? Math.round(futureUnits.minRequiredUnits) : "N/A"} units</p>
-        <p><span className="font-semibold">Max Required Units:</span> {futureUnits ? Math.round(futureUnits.maxRequiredUnits) : "N/A"} units</p>
+      <div className="flex items-center space-x-3">
+        <input
+          type="checkbox"
+          id="predicted"
+          checked={showPredicted}
+          onChange={(e) => setShowPredicted(e.target.checked)}
+        />
+        <label htmlFor="predicted" className="text-sm">
+          Predicted Sales
+        </label>
+        <input
+          type="checkbox"
+          id="min"
+          checked={showMin}
+          onChange={(e) => setShowMin(e.target.checked)}
+        />
+        <label htmlFor="min" className="text-sm">
+          Minimum Required Units
+        </label>
+        <input
+          type="checkbox"
+          id="max"
+          checked={showMax}
+          onChange={(e) => setShowMax(e.target.checked)}
+        />
+        <label htmlFor="max" className="text-sm">
+          Maximum Required Units
+        </label>
       </div>
     </div>
+
+    {product !== "None" && forecastData && prepareChartData() && (
+      <div className="bg-white p-6 rounded-xl shadow border border-gray-200 space-y-6">
+        <h2 className="text-2xl font-bold text-[#09243A] text-center">Forecast Summary</h2>
+
+<div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm text-gray-800">
+  <div className="space-y-2">
+    <p><span className="font-semibold">Product:</span> {product}</p>
+    <p><span className="font-semibold">Store Location:</span> {store}</p>
+    <p><span className="font-semibold">Start Date:</span> {startDate}</p>
+    <p><span className="font-semibold">End Date:</span> {endDate}</p>
   </div>
-)}
-
-
-        {forecastData && prepareChartData() && (
-          <Line
-            className="min-w-[1080px] max-h-[500px] animate-fadeIn"
-            data={prepareChartData()}
-            options={chartOptions}
-          />
-        )}
+  <div className="space-y-2">
+    <p><span className="font-semibold">Forecast Interval:</span> {selectedInterval}</p>
+    <p><span className="font-semibold">Min Required Units:</span> {futureUnits ? Math.round(futureUnits.minRequiredUnits) : "N/A"} units</p>
+    <p><span className="font-semibold">Max Required Units:</span> {futureUnits ? Math.round(futureUnits.maxRequiredUnits) : "N/A"} units</p>
+  </div>
+</div>
       </div>
-    </div>
+    )}
+
+    {forecastData && prepareChartData() && (
+      <Line
+        className="min-w-[1080px] max-h-[500px] animate-fadeIn"
+        data={prepareChartData()}
+        options={chartOptions}
+      />
+    )}
+  </div>
+</div>
   );
 }

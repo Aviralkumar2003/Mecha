@@ -3,9 +3,7 @@ import { motion } from "framer-motion";
 export default function Home() {
   return (
     <div className="w-full">
-      {/* Hero Section */}
       <div className="relative h-screen w-full">
-        {/* Background Image */}
         <div
           className="absolute inset-0 bg-cover bg-center"
           style={{
@@ -13,10 +11,8 @@ export default function Home() {
           }}
         ></div>
 
-        {/* Gradient Overlay */}
         <div className="absolute inset-0 bg-black opacity-60"></div>
 
-        {/* Hero Content */}
         <div className="relative z-10 flex flex-col items-center justify-center h-full text-white px-4">
           <motion.h1
             initial={{ opacity: 0, y: -40 }}
@@ -35,7 +31,6 @@ export default function Home() {
             An intelligent inventory forecasting tool for car dealerships.
           </motion.p>
 
-          {/* Scroll Button */}
           <a href="#features" className="mt-10">
             <button className="bg-white text-[#31837A] font-semibold px-6 py-2 rounded-full shadow hover:bg-gray-100 transition">
               ↓ Explore Features
@@ -44,7 +39,6 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Features Section */}
       <div id="features" className="bg-white py-20 px-6 md:px-20">
         <motion.h2
           initial={{ opacity: 0, y: 30 }}
@@ -98,14 +92,6 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Quote Section */}
-      {/* <div className="bg-gray-50 py-20 px-6 md:px-20 text-center">
-        <h2 className="text-2xl md:text-3xl font-semibold text-gray-800 max-w-3xl mx-auto leading-relaxed">
-          “Project Mecha isn’t just another dashboard — it’s a smart, data-driven co-pilot for managing the parts that keep your dealership moving.”
-        </h2>
-      </div> */}
-
-      {/* CTA Section */}
       <div className="bg-[#f8fafc] py-16 px-6 md:px-20 text-center">
         <h3 className="text-2xl font-bold text-gray-800 mb-4">
           Ready to explore your inventory?
@@ -121,11 +107,8 @@ export default function Home() {
         </a>
       </div>
 
-      {/* Footer */}
       <footer className="bg-[#0F172A] text-white text-center py-4">
-        <p className="text-sm">
-          CDK Academia Project © 2025 | Team MIT ADT 
-        </p>
+        <p className="text-sm">CDK Academia Project © 2025 | Team MIT ADT</p>
       </footer>
     </div>
   );
